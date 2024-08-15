@@ -39,9 +39,25 @@ app.get("/api/users/:id", (req, res) => {
 });
 
 app.post("/api/users", (req, res) => {
-   const newUser = { id: mockUsers[mockUsers.length - 1].id + 1, ...req.body}
+   const newUser = { id: mockUsers[mockUsers.length - 1].id + 1, ...req.body };
    mockUsers.push(newUser);
    res.status(201).send(newUser);
+});
+
+app.put("/api/users/:id", (req, res) => {
+   const {
+      body,
+      params: { id },
+   } = req;
+   const parsedId = parseInt(id);
+   if (isNaN(parsedId)) return res.sendStatus(400);
+
+   const findUserIndex = mockUsers.findIndex((user) => user.id === parsedId);
+   if (findUserIndex === -1) return res.sendStatus(404);
+
+   mockUsers[findUserIndex] = { id: parsedId, ...body };
+
+   return res.sendStatus(204);
 });
 
 app.listen(PORT, () => {
