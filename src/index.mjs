@@ -1,4 +1,6 @@
 import express from "express";
+import { query, validationResult, matchedData, checkSchema } from "express-validator";
+import { createUserValidationSchema } from "./utils/validationSchemas.mjs";
 
 const PORT = process.env.PORT || 3000;
 
@@ -26,22 +28,27 @@ const resolveIndexByUserId = (req, res, next) => {
    next();
 };
 
-app.use(loggingMiddleware);
-
-app.get("/", loggingMiddleware, (req, res) => {
+app.get("/", (req, res) => {
    res.send({ message: "Hello World" });
 });
 
-app.get("/api/users", (req, res) => {
-   const {
-      query: { filter, value },
-   } = req;
-   if (filter && value) {
-      const filteredUsers = mockUsers.filter((user) => user[filter] === value);
-      return res.send(filteredUsers);
+app.get(
+   "/api/users",
+   query("filter").isString().notEmpty().withMessage("Must not be empty").isLength({ min: 3, max: 10 }).withMessage("Must be 3-10 characters"),
+   (req, res) => {
+      const result = validationResult(req);
+      console.log(result);
+
+      const {
+         query: { filter, value },
+      } = req;
+      if (filter && value) {
+         const filteredUsers = mockUsers.filter((user) => user[filter] === value);
+         return res.send(filteredUsers);
+      }
+      res.send(mockUsers);
    }
-   res.send(mockUsers);
-});
+);
 
 app.get("/api/users/:id", resolveIndexByUserId, (req, res) => {
    const { findUserIndex } = req;
@@ -51,8 +58,14 @@ app.get("/api/users/:id", resolveIndexByUserId, (req, res) => {
    return res.send(findUser);
 });
 
-app.post("/api/users", (req, res) => {
-   const newUser = { id: mockUsers[mockUsers.length - 1].id + 1, ...req.body };
+app.post("/api/users", checkSchema(createUserValidationSchema), (req, res) => {
+   const result = validationResult(req);
+   console.log(result);
+
+   if (!result.isEmpty()) return res.status(400).send(result.array());
+
+   const data = matchedData(req);
+   const newUser = { id: mockUsers[mockUsers.length - 1].id + 1, ...data };
    mockUsers.push(newUser);
    res.status(201).send(newUser);
 });
